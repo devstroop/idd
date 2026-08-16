@@ -61,6 +61,7 @@ triggers, guards, and formats stay.
 .github/workflows/       trigger wiring
 .github/ISSUE_TEMPLATE/  intent form (buttons, no free text required)
 .opencode/agents/        formatter, triage — the workforce
+client/                  reference client code (reconnection support)
 AGENTS.md                behavior contract for agents
 note.txt                 what IDD means here
 ```
