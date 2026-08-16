@@ -21,6 +21,12 @@ jobs:
       - uses: devstroop/setup-opencode@main
         with:
           version: latest
+          config: .config/opencode/config.json
+
+      - name: Agent resolution check
+        run: |
+          echo "OPENCODE_CONFIG=$OPENCODE_CONFIG"
+          opencode agent list | grep -E "formatter|triage" || echo "AGENTS NOT FOUND"
 
       - name: Smoke test
         run: |
