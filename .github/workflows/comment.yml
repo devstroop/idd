@@ -75,16 +75,13 @@ jobs:
           OPENCODE_MODEL: ${{ vars.OPENCODE_MODEL || '' }}
         run: |
           rm -f /tmp/idd-reply.md /tmp/events.jsonl
-          for model in ${OPENCODE_MODEL:-opencode/big-pickle opencode/deepseek-v4-flash-free opencode/mimo-v2.5-free}; do
-            [ -z "$model" ] && continue
-            echo "trying model: $model"
-            if timeout 300 opencode run --format json -m "$model" --agent triage \
-              "Handle '$IDD_COMMAND' on $IDD_KIND #$IDD_NUMBER" > /tmp/events.jsonl 2>&1 \
-              && [ -s /tmp/idd-reply.md ]; then
-              echo "used model: $model"
-              break
-            fi
-          done
+          if [ -n "$OPENCODE_MODEL" ]; then
+            timeout 300 opencode run --format json -m "$OPENCODE_MODEL" --agent triage \
+              "Handle '$IDD_COMMAND' on $IDD_KIND #$IDD_NUMBER" > /tmp/events.jsonl 2>&1
+          else
+            timeout 300 opencode run --format json --agent triage \
+              "Handle '$IDD_COMMAND' on $IDD_KIND #$IDD_NUMBER" > /tmp/events.jsonl 2>&1
+          fi
           if [ ! -s /tmp/idd-reply.md ]; then
             jq -r 'select(.type=="message.part.updated") | .properties.part | select(.type=="text") | .text' \
               /tmp/events.jsonl 2>/dev/null \

@@ -12,10 +12,10 @@ manual dispatch       (opencode CLI)           (via GITHUB_TOKEN)
 ```
 
 **Zero secrets required.** opencode runs free public models via
-`devstroop/setup-opencode` — no API keys, no GitHub App install. Each run
-tries the model chain `opencode/big-pickle` → `opencode/deepseek-v4-flash-free`
-→ `opencode/mimo-v2.5-free` until one answers; set the `OPENCODE_MODEL` repo
-variable to force a model (e.g. a paid `anthropic/claude-sonnet-4-20250514`).
+`devstroop/setup-opencode` — no API keys, no GitHub App install. The model
+is configured in **one place**: `.config/opencode/config.json` (default
+`opencode/big-pickle`), overridable per-repo with the `OPENCODE_MODEL`
+repo variable (e.g. a paid `anthropic/claude-sonnet-4-20250514`).
 
 ## What wakes up
 

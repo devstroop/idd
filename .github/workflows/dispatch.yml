@@ -56,28 +56,16 @@ jobs:
           IDD_BRANCH: idd/${{ github.ref_name }}
           OPENCODE_MODEL: ${{ vars.OPENCODE_MODEL || '' }}
         run: |
+          if [ -n "$OPENCODE_MODEL" ]; then
+            MODEL_ARGS="-m $OPENCODE_MODEL"
+          fi
           if [ "$IDD_IMPLEMENT" = "true" ]; then
-            for model in ${OPENCODE_MODEL:-opencode/big-pickle opencode/deepseek-v4-flash-free opencode/mimo-v2.5-free}; do
-              [ -z "$model" ] && continue
-              echo "trying model: $model"
-              if timeout 600 opencode run -m "$model" \
-                "Implement this intent ($IDD_KIND): $IDD_INTENT"; then
-                echo "used model: $model"
-                break
-              fi
-            done
+            timeout 600 opencode run $MODEL_ARGS \
+              "Implement this intent ($IDD_KIND): $IDD_INTENT"
           else
             rm -f /tmp/idd-reply.md /tmp/events.jsonl
-            for model in ${OPENCODE_MODEL:-opencode/big-pickle opencode/deepseek-v4-flash-free opencode/mimo-v2.5-free}; do
-              [ -z "$model" ] && continue
-              echo "trying model: $model"
-              if timeout 300 opencode run --format json -m "$model" --agent triage \
-                "Plan only ($IDD_KIND): $IDD_INTENT" > /tmp/events.jsonl 2>&1 \
-                && [ -s /tmp/idd-reply.md ]; then
-                echo "used model: $model"
-                break
-              fi
-            done
+            timeout 300 opencode run --format json $MODEL_ARGS --agent triage \
+              "Plan only ($IDD_KIND): $IDD_INTENT" > /tmp/events.jsonl 2>&1
             if [ ! -s /tmp/idd-reply.md ]; then
               jq -r 'select(.type=="message.part.updated") | .properties.part | select(.type=="text") | .text' \
                 /tmp/events.jsonl 2>/dev/null \
