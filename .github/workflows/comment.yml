@@ -1,0 +1,77 @@
+name: IDD comment
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: write
+  checks: read
+
+concurrency:
+  group: idd-thread-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  respond:
+    if: github.event.comment.user.type != 'Bot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: devstroop/setup-opencode@v1
+        with:
+          version: latest
+
+      - name: Acknowledge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/reactions" \
+            -H "Accept: application/vnd.github.squirrel-girl-preview+json" \
+            -f content=eyes || true
+
+      - name: Parse command
+        id: cmd
+        env:
+          BODY: ${{ github.event.comment.body }}
+        run: |
+          CMD="feedback"
+          if [[ "$BODY" =~ ^/[a-z][a-z-]* ]]; then
+            CMD="${BODY%% *}"
+          fi
+          echo "command=$CMD" >> "$GITHUB_OUTPUT"
+          echo "Parsed command: $CMD"
+
+      - name: Run triage agent
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IDD_REPO: ${{ github.repository }}
+          IDD_NUMBER: ${{ github.event.issue.number }}
+          IDD_KIND: ${{ github.event.issue.pull_request && 'pr' || 'issue' }}
+          IDD_COMMENT: ${{ github.event.comment.body }}
+          IDD_AUTHOR: ${{ github.event.comment.user.login }}
+          IDD_COMMAND: ${{ steps.cmd.outputs.command }}
+          IDD_ALLOWED: ${{ contains(fromJson('["OWNER","COLLABORATOR","MEMBER"]'), github.event.comment.author_association) }}
+          OPENCODE_MODEL: ${{ vars.OPENCODE_MODEL || 'opencode/deepseek-v4-flash-free' }}
+        run: |
+          opencode run -m "$OPENCODE_MODEL" --agent triage \
+            "Handle '$IDD_COMMAND' on $IDD_KIND #$IDD_NUMBER" > /tmp/reply.md || true
+          if [ ! -s /tmp/reply.md ]; then
+            echo "No reply generated." > /tmp/reply.md
+          fi
+          gh issue comment "$IDD_NUMBER" --repo "$IDD_REPO" --body-file /tmp/reply.md
+
+      - name: Done
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/reactions" \
+            -H "Accept: application/vnd.github.squirrel-girl-preview+json" \
+            -f content=+1 || true

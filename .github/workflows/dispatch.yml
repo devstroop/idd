@@ -1,0 +1,66 @@
+name: IDD intent dispatch
+
+on:
+  workflow_dispatch:
+    inputs:
+      intent:
+        description: What outcome do you want? (goal, why, constraints)
+        required: true
+        type: string
+      kind:
+        description: Kind of work
+        required: true
+        default: feature
+        type: choice
+        options:
+          - feature
+          - fix
+          - refactor
+          - docs
+          - research
+      implement:
+        description: Implement it now (branch + PR), or plan only?
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: idd-dispatch-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: devstroop/setup-opencode@v1
+        with:
+          version: latest
+
+      - name: Execute intent
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IDD_INTENT: ${{ github.event.inputs.intent }}
+          IDD_KIND: ${{ github.event.inputs.kind }}
+          IDD_IMPLEMENT: ${{ github.event.inputs.implement }}
+          IDD_BRANCH: idd/${{ github.ref_name }}
+          OPENCODE_MODEL: ${{ vars.OPENCODE_MODEL || 'opencode/deepseek-v4-flash-free' }}
+        run: |
+          if [ "$IDD_IMPLEMENT" = "true" ]; then
+            opencode run -m "$OPENCODE_MODEL" \
+              "Implement this intent ($IDD_KIND): $IDD_INTENT" || exit 1
+          else
+            opencode run -m "$OPENCODE_MODEL" --agent triage \
+              "Plan only ($IDD_KIND): $IDD_INTENT" > /tmp/plan.md || true
+            gh issue create --title "Plan: $(echo "$IDD_INTENT" | head -c 60)" \
+              --body-file /tmp/plan.md
+          fi

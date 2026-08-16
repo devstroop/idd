@@ -1,0 +1,39 @@
+name: IDD format PR
+
+on:
+  pull_request:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+concurrency:
+  group: idd-pr-${{ github.event.pull_request.number }}-format
+  cancel-in-progress: false
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: devstroop/setup-opencode@v1
+        with:
+          version: latest
+
+      - name: Reformat title and body
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IDD_KIND: pr
+          IDD_NUMBER: ${{ github.event.pull_request.number }}
+          OPENCODE_MODEL: ${{ vars.OPENCODE_MODEL || 'opencode/deepseek-v4-flash-free' }}
+        run: |
+          IDD_INPUT_JSON="$(gh pr view "$IDD_NUMBER" --json title,body --jq '{title, body}')"
+          opencode run -m "$OPENCODE_MODEL" --agent formatter \
+            "Reformat $IDD_KIND #$IDD_NUMBER. Current content: $IDD_INPUT_JSON" || exit 1
+          jq -e . .idd/result.json > /dev/null
+          TITLE="$(jq -r .title .idd/result.json)"
+          jq -r .body .idd/result.json > /tmp/body.md
+          gh pr edit "$IDD_NUMBER" --title "$TITLE" --body-file /tmp/body.md

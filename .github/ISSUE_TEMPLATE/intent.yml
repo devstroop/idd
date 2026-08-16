@@ -1,0 +1,59 @@
+name: Intent
+description: File an intent — what outcome you want, why, and what must not break.
+title: "[Intent] "
+labels: [intent]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One intent, one thread. Keep it short — the formatter will tighten it up.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of work
+      options:
+        - feature
+        - fix
+        - refactor
+        - docs
+        - research
+        - chore
+    validations:
+      required: true
+
+  - type: textarea
+    id: intent
+    attributes:
+      label: What outcome do you want?
+      description: The goal, and why it matters.
+      placeholder: "e.g. Let VPN clients resume a dropped session without re-authenticating, so mobile users don't lose the tunnel."
+    validations:
+      required: true
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints
+      description: What must not change, break, or be touched.
+      placeholder: "e.g. Must stay compatible with SoftEther 4.x servers; no new dependencies."
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How will we know it's done?
+      placeholder: "- [ ] Client resumes within 5s\n- [ ] No re-auth prompt\n- [ ] Existing sessions unaffected"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: next
+    attributes:
+      label: Next step
+      description: Reply with the matching command after filing.
+      options:
+        - label: "I want a plan first — reply `/plan`"
+        - label: "I want it implemented — reply `/implement`"

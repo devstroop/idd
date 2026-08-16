@@ -1,0 +1,40 @@
+name: IDD format issue
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency:
+  group: idd-issue-${{ github.event.issue.number }}-format
+  cancel-in-progress: false
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: devstroop/setup-opencode@v1
+        with:
+          version: latest
+
+      - name: Reformat title and body
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IDD_KIND: issue
+          IDD_NUMBER: ${{ github.event.issue.number }}
+          OPENCODE_MODEL: ${{ vars.OPENCODE_MODEL || 'opencode/deepseek-v4-flash-free' }}
+        run: |
+          IDD_INPUT_JSON="$(gh issue view "$IDD_NUMBER" --json title,body --jq '{title, body}')"
+          opencode run -m "$OPENCODE_MODEL" --agent formatter \
+            "Reformat $IDD_KIND #$IDD_NUMBER. Current content: $IDD_INPUT_JSON" || exit 1
+          jq -e . .idd/result.json > /dev/null
+          TITLE="$(jq -r .title .idd/result.json)"
+          jq -r .body .idd/result.json > /tmp/body.md
+          gh issue edit "$IDD_NUMBER" --title "$TITLE" --body-file /tmp/body.md
+          gh issue edit "$IDD_NUMBER" --add-label idd-formatted || true
