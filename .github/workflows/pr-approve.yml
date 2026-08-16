@@ -3,13 +3,15 @@ name: IDD approve
 on:
   pull_request:
     types: [edited]
+  issue_comment:
+    types: [created, edited]
 
 permissions:
   contents: write
   pull-requests: write
 
 concurrency:
-  group: idd-pr-${{ github.event.pull_request.number }}-approve
+  group: idd-pr-${{ github.event.pull_request.number || github.event.issue.number }}-approve
   cancel-in-progress: false
 
 jobs:
@@ -23,30 +25,40 @@ jobs:
       - name: Detect approve tick
         id: detect
         env:
+          EVENT: ${{ github.event_name }}
           FROM: ${{ github.event.changes.body.from || '' }}
-          BODY: ${{ github.event.pull_request.body }}
+          BODY: ${{ github.event.pull_request.body || github.event.comment.body }}
           IDD_MERGE_METHOD: ${{ vars.IDD_MERGE_METHOD || 'squash' }}
         run: |
-          if printf '%s' "$BODY" | grep -q -- '- \[x\] Approve'; then
-            if ! printf '%s' "$FROM" | grep -q -- '- \[x\] Approve'; then
-              echo "approve=true" >> "$GITHUB_OUTPUT"
-              echo "method=$IDD_MERGE_METHOD" >> "$GITHUB_OUTPUT"
-              echo "Approve & merge ticked"
-            else
-              echo "already approved earlier"
+          APPROVE=""
+          if [ "$EVENT" = "issue_comment" ]; then
+            if [ "${{ github.event.issue.pull_request }}" = "{}" ]; then
+              echo "not a PR comment — ignoring"
+              exit 0
             fi
+            grep -q -- '- \[x\] Approve & merge' <<< "$BODY" || exit 0
+            grep -q -- '- \[x\] Approve & merge' <<< "$FROM" && exit 0
+            APPROVE=true
+          else
+            grep -q -- '- \[x\] Approve & merge' <<< "$BODY" || exit 0
+            grep -q -- '- \[x\] Approve & merge' <<< "$FROM" && exit 0
+            APPROVE=true
           fi
+          echo "approve=$APPROVE" >> "$GITHUB_OUTPUT"
+          echo "method=$IDD_MERGE_METHOD" >> "$GITHUB_OUTPUT"
+          echo "Approve & merge ticked"
 
       - name: Merge and report
         if: steps.detect.outputs.approve == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          PR="${{ github.event.pull_request.number }}"
+          PR="${{ github.event.pull_request.number || github.event.issue.number }}"
           REPO="${{ github.repository }}"
           BODY="$(gh pr view "$PR" --repo "$REPO" --json body -q .body)"
           printf '%s' "$BODY" | sed 's/^- \[x\] Approve & merge/- [ ] Approve \& merge/' > /tmp/pr-body.md
-          gh pr edit "$PR" --repo "$REPO" --body-file /tmp/pr-body.md
+          gh api -X PATCH "repos/$REPO/pulls/$PR" \
+            --input <(jq -n --arg b "$(cat /tmp/pr-body.md)" '{body:$b}')
           if gh pr merge "$PR" --repo "$REPO" --${{ steps.detect.outputs.method }}; then
             gh pr comment "$PR" --repo "$REPO" --body "✅ Merged via the approve checklist."
           else

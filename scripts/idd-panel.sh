@@ -35,7 +35,7 @@ case "$action" in
 esac
 
 render() {
-  awk -v checked="$cmd" -v st="$status" '
+  awk -v checked="$cmd" -v st="$status" -v kind="${IDD_KIND:-}" '
     /IDD-PANEL/ { print; next }
     /^### / { print; next }
     /^- \[/ {
@@ -48,6 +48,13 @@ render() {
     }
     /^`Last run:/ { print "`Last run: " st "`"; next }
     { print }
+    END {
+      if (kind == "pr") {
+        line = "- [ ] ✅ /approve — Approve & merge (merge this PR)"
+        if (checked == "approve") sub(/^- \[ \]/, "- [x]", line)
+        print line
+      }
+    }
   ' "$TEMPLATE"
 }
 

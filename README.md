@@ -34,12 +34,15 @@ click-to-trigger controls:
 
 - **🤖 Actions panel** — every issue/PR gets a bot comment with tickable
   checkboxes (`/plan`, `/review`, `/implement`, `/close`). Tick one; the
-  bot marks it running, replies, and resets the panel.
+  bot marks it running, replies, and resets the panel. On PRs the panel
+  adds `/approve` — tick it to merge.
 - **Slash commands** — `/plan`, `/review`, `/implement`, `/close` still work
   typed, as a fallback.
 - **Approve & merge checklist** — PR bodies carry a tickable
   `- [ ] Approve & merge` box (renders in the merge widget too); ticking it
-  merges.
+  merges. For PRs opened by the bot itself (`/implement`), GitHub suppresses
+  `pull_request: edited` events, so those merge via the panel's `/approve`
+  box instead — same rule, same guard.
 - **Reactions** — 👀 ack on start, ✅ on finish (status also lands in the
   panel's `Last run:` line).
 

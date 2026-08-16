@@ -34,13 +34,17 @@ do not invent new trigger formats.
 | **Approve & merge checklist** | PR body (`.config/opencode/checklist.md`) | tick box → merge | `pull_request: [edited]` |
 | **Reactions** | 👀 on start, ✅ on finish | ack only — never a trigger | — (no webhook) |
 
+On PRs the panel adds one more box, `✅ /approve — Approve & merge`,
+handled by `pr-approve.yml` (not `comment.yml`).
+
 Rules:
 
 1. **Sender, not author.** Dispatch filters on `github.event.sender.type != 'Bot'` — a
    human ticking a bot's panel comment produces `sender = human`. Bot resets
    are filtered by the same rule, so no loops.
 2. **Tick detection.** A command dispatches only when a box transitions
-   `[ ] → [x]` between `changes.body.from` and `changes.body.to`.
+   `[ ] → [x]`. Webhooks deliver only `changes.body.from` — the current
+   content is `comment.body` (or `pull_request.body`). Compare the two.
 3. **Panels reset after every run.** `scripts/idd-panel.sh` owns the panel
    comment (marker `<!-- IDD-PANEL -->`): `post` on open, `check <cmd>` while
    running, `reset` when done. The status line reports the last run.
@@ -50,6 +54,10 @@ Rules:
    OWNER/COLLABORATOR/MEMBER — enforced in the workflow, not by the agent.
 6. **No menus in agent replies.** The panel replaces pasted menus; replies
    end with `_Tick an action in the 🤖 panel above._`
+7. **Workflow-created PRs are event-suppressed.** GitHub drops
+   `pull_request: edited` runs on PRs created by `GITHUB_TOKEN`
+   (e.g. `/implement` PRs) — so their merge gate must go through the
+   panel's `/approve` box (`issue_comment`), which still fires.
 
 ## Command reference (panel + slash)
 
