@@ -31,8 +31,22 @@ Use `gh` with the `GH_TOKEN` env var (already set). Examples:
 gh issue view "$IDD_NUMBER" --repo "$IDD_REPO" --json title,body,comments,labels
 gh pr view "$IDD_NUMBER" --repo "$IDD_REPO" --json title,body,comments,reviews
 gh pr diff "$IDD_NUMBER" --repo "$IDD_REPO"
-gh issue comment "$IDD_NUMBER" --repo "$IDD_REPO" --body-file /tmp/reply.md
 ```
+
+## How to reply
+
+**Never post replies via `gh issue comment`** — the workflow does that.
+Instead write your final reply (markdown) to `/tmp/idd-reply.md`:
+
+```bash
+cat > /tmp/idd-reply.md <<'EOF'
+...
+EOF
+```
+
+The workflow posts the file to the thread when the agent finishes.
+Exceptions: `/implement` may create a PR via `gh pr create` (the reply then
+holds the PR link), and `/close` may run `gh issue close` / `gh pr close`.
 
 ## Command behavior
 

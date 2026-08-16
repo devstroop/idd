@@ -60,21 +60,21 @@ jobs:
           IDD_ALLOWED: ${{ contains(fromJson('["OWNER","COLLABORATOR","MEMBER"]'), github.event.comment.author_association) }}
           OPENCODE_MODEL: ${{ vars.OPENCODE_MODEL || '' }}
         run: |
-          : > /tmp/reply.md
+          rm -f /tmp/idd-reply.md
           for model in ${OPENCODE_MODEL:-opencode/big-pickle opencode/deepseek-v4-flash-free opencode/mimo-v2.5-free}; do
             [ -z "$model" ] && continue
             echo "trying model: $model"
             if timeout 300 opencode run -m "$model" --agent triage \
-              "Handle '$IDD_COMMAND' on $IDD_KIND #$IDD_NUMBER" > /tmp/reply.md 2>&1 \
-              && [ -s /tmp/reply.md ]; then
+              "Handle '$IDD_COMMAND' on $IDD_KIND #$IDD_NUMBER" > /dev/null 2>&1 \
+              && [ -s /tmp/idd-reply.md ]; then
               echo "used model: $model"
               break
             fi
           done
-          if [ ! -s /tmp/reply.md ]; then
-            echo "No reply generated." > /tmp/reply.md
+          if [ ! -s /tmp/idd-reply.md ]; then
+            echo "No reply generated." > /tmp/idd-reply.md
           fi
-          gh issue comment "$IDD_NUMBER" --repo "$IDD_REPO" --body-file /tmp/reply.md
+          gh issue comment "$IDD_NUMBER" --repo "$IDD_REPO" --body-file /tmp/idd-reply.md
 
       - name: Done
         if: always()
