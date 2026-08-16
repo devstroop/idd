@@ -16,14 +16,26 @@ concurrency:
 
 jobs:
   merge:
-    if: >-
-      github.event.sender.type != 'Bot' &&
-      contains(fromJson('["OWNER","COLLABORATOR","MEMBER"]'),
-        github.event.pull_request.user.author_association || github.event.comment.user.author_association)
+    if: github.event.sender.type != 'Bot'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Dump event fields
+        run: |
+          jq '{sender:.sender.login, sender_assoc:.sender.author_association, pr_user:.pull_request.user.login, pr_assoc:.pull_request.user.author_association, comment_user:.comment.user.login, comment_assoc:.comment.user.author_association}' "$GITHUB_EVENT_PATH"
+
+      - name: Guard (OWNER/COLLABORATOR/MEMBER)
+        id: guard
+        run: |
+          ASSOC="$(jq -r '.comment.user.author_association // .pull_request.user.author_association // .sender.author_association // "NONE"' "$GITHUB_EVENT_PATH")"
+          case ",OWNER,COLLABORATOR,MEMBER," in
+            *",$ASSOC,"*) echo "allowed=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "allowed=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+          echo "association=$ASSOC allowed=$(grep '^allowed=' "$GITHUB_OUTPUT" | cut -d= -f2)"
+
       - name: Detect approve tick
+        if: steps.guard.outputs.allowed == 'true'
         id: detect
         env:
           EVENT: ${{ github.event_name }}
