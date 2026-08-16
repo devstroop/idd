@@ -43,7 +43,6 @@ jobs:
           ACTION: ${{ github.event.action }}
           BODY: ${{ github.event.comment.body }}
           FROM: ${{ github.event.changes.body.from || '' }}
-          TO: ${{ github.event.changes.body.to || '' }}
         run: |
           CMD=""
           if [ "$ACTION" = "created" ]; then
@@ -52,7 +51,7 @@ jobs:
             fi
           else
             FROMSET="$(printf '%s' "$FROM" | grep '^- \[x\]' | grep -oE '/(plan|review|implement|close)' || true)"
-            for c in $(printf '%s' "$TO" | grep '^- \[x\]' | grep -oE '/(plan|review|implement|close)' || true); do
+            for c in $(printf '%s' "$BODY" | grep '^- \[x\]' | grep -oE '/(plan|review|implement|close)' || true); do
               case " $FROMSET " in
                 *" $c "*) ;;
                 *) CMD="$c"; break ;;

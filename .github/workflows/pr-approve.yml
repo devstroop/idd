@@ -24,10 +24,10 @@ jobs:
         id: detect
         env:
           FROM: ${{ github.event.changes.body.from || '' }}
-          TO: ${{ github.event.changes.body.to || '' }}
+          BODY: ${{ github.event.pull_request.body }}
           IDD_MERGE_METHOD: ${{ vars.IDD_MERGE_METHOD || 'squash' }}
         run: |
-          if printf '%s' "$TO" | grep -q -- '- \[x\] Approve'; then
+          if printf '%s' "$BODY" | grep -q -- '- \[x\] Approve'; then
             if ! printf '%s' "$FROM" | grep -q -- '- \[x\] Approve'; then
               echo "approve=true" >> "$GITHUB_OUTPUT"
               echo "method=$IDD_MERGE_METHOD" >> "$GITHUB_OUTPUT"
