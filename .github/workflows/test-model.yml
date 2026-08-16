@@ -1,0 +1,30 @@
+name: IDD test model
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Model id to test (provider/model)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: devstroop/setup-opencode@main
+        with:
+          version: latest
+
+      - name: Smoke test
+        run: |
+          timeout 240 opencode run -m "${{ github.event.inputs.model }}" \
+            "Reply with exactly: pong" 2>&1 | tee /tmp/out.txt
+          echo "exit=$?"
+          if grep -q pong /tmp/out.txt; then echo "MODEL OK"; else echo "MODEL FAILED"; fi
