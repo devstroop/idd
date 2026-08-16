@@ -1,0 +1,13 @@
+{
+  "name": "idd-reconnect-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal client-side reconnection logic: resumes tunnel connections after Wi-Fi drops without re-running auth or touching the protocol flow.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
