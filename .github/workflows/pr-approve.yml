@@ -1,0 +1,54 @@
+name: IDD approve
+
+on:
+  pull_request:
+    types: [edited]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: idd-pr-${{ github.event.pull_request.number }}-approve
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    if: >-
+      github.event.sender.type != 'Bot' &&
+      contains(fromJson('["OWNER","COLLABORATOR","MEMBER"]'), github.event.sender.author_association)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Detect approve tick
+        id: detect
+        env:
+          FROM: ${{ github.event.changes.body.from || '' }}
+          TO: ${{ github.event.changes.body.to || '' }}
+          IDD_MERGE_METHOD: ${{ vars.IDD_MERGE_METHOD || 'squash' }}
+        run: |
+          if printf '%s' "$TO" | grep -q -- '- \[x\] Approve'; then
+            if ! printf '%s' "$FROM" | grep -q -- '- \[x\] Approve'; then
+              echo "approve=true" >> "$GITHUB_OUTPUT"
+              echo "method=$IDD_MERGE_METHOD" >> "$GITHUB_OUTPUT"
+              echo "Approve & merge ticked"
+            else
+              echo "already approved earlier"
+            fi
+          fi
+
+      - name: Merge and report
+        if: steps.detect.outputs.approve == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR="${{ github.event.pull_request.number }}"
+          REPO="${{ github.repository }}"
+          BODY="$(gh pr view "$PR" --repo "$REPO" --json body -q .body)"
+          printf '%s' "$BODY" | sed 's/^- \[x\] Approve & merge/- [ ] Approve \& merge/' > /tmp/pr-body.md
+          gh pr edit "$PR" --repo "$REPO" --body-file /tmp/pr-body.md
+          if gh pr merge "$PR" --repo "$REPO" --${{ steps.detect.outputs.method }}; then
+            gh pr comment "$PR" --repo "$REPO" --body "✅ Merged via the approve checklist."
+          else
+            gh pr comment "$PR" --repo "$REPO" --body "❌ Merge failed — resolve conflicts, then tick **Approve & merge** again."
+          fi

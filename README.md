@@ -21,24 +21,30 @@ repo variable (e.g. a paid `anthropic/claude-sonnet-4-20250514`).
 
 | Workflow | Trigger | Does |
 |----------|---------|------|
-| `issue-opened.yml` | issue opened | Reformat title + body into the IDD intent format. **Formatting only, no implementation.** |
-| `pr-opened.yml` | PR opened | Reformat PR title + body. **Formatting only.** |
-| `comment.yml` | comment on issue/PR | Interactive feedback on every human comment + slash-command dispatch (see below). |
+| `issue-opened.yml` | issue opened | Reformat title + body into the IDD intent format, post the 🤖 panel. **Formatting only.** |
+| `pr-opened.yml` | PR opened | Reformat PR title + body, append the approve checklist, post the 🤖 panel. |
+| `comment.yml` | comment created/edited | Interactive feedback on every human comment; dispatches panel ticks + slash commands. |
+| `pr-approve.yml` | PR body edited | Ticking **Approve & merge** merges the PR (OWNER/COLLABORATOR/MEMBER). |
 | `dispatch.yml` | `Run workflow` button in Actions | Turn a typed intent into a branch + PR. |
 
-## Commands (reply in any comment)
+## Interactive components
 
-| Command | Action |
-|---------|--------|
-| `/help` | Print the command menu |
-| `/plan` | Produce a work plan comment (no code) |
-| `/review` | Review the issue context or PR diff, post findings |
-| `/implement` | Implement into a branch and open a PR (OWNER / COLLABORATOR / MEMBER only) |
-| `/close` | Summarize and close |
+No typing required for the common path — GitHub markdown gives us real
+click-to-trigger controls:
 
-The bot replies with this menu as checkboxes — checking one and replying with
-its command is all that's needed. Every run is acknowledged instantly with a
-👀 reaction and finished with ✔️.
+- **🤖 Actions panel** — every issue/PR gets a bot comment with tickable
+  checkboxes (`/plan`, `/review`, `/implement`, `/close`). Tick one; the
+  bot marks it running, replies, and resets the panel.
+- **Slash commands** — `/plan`, `/review`, `/implement`, `/close` still work
+  typed, as a fallback.
+- **Approve & merge checklist** — PR bodies carry a tickable
+  `- [ ] Approve & merge` box (renders in the merge widget too); ticking it
+  merges.
+- **Reactions** — 👀 ack on start, ✅ on finish (status also lands in the
+  panel's `Last run:` line).
+
+Panel and checklist templates live in `.config/opencode/`; the panel
+controller is `scripts/idd-panel.sh`.
 
 ## Setup
 
@@ -61,7 +67,8 @@ triggers, guards, and formats stay.
 ```
 .github/workflows/       trigger wiring (thin — no prompts inline)
 .github/ISSUE_TEMPLATE/  intent form (buttons, no free text required)
-.config/opencode/        agent metadata + prompts (the workforce)
-AGENTS.md                behavior contract for agents
+.config/opencode/        agent metadata + prompts + panel/checklist templates
+scripts/idd-panel.sh     panel controller (the control plane)
+AGENTS.md                behavior contract for agents + components
 note.txt                 what IDD means here
 ```

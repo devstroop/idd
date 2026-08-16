@@ -44,3 +44,22 @@ jobs:
           TITLE="$(jq -r .title .idd/result.json)"
           jq -r .body .idd/result.json > /tmp/body.md
           gh pr edit "$IDD_NUMBER" --title "$TITLE" --body-file /tmp/body.md
+
+      - name: Append approve checklist
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BODY="$(jq -r .body .idd/result.json)"
+          if ! printf '%s' "$BODY" | grep -q "Approve & merge"; then
+            printf '\n%s\n' "$BODY" > /tmp/body2.md
+            cat .config/opencode/checklist.md >> /tmp/body2.md
+            gh pr edit "$IDD_NUMBER" --body-file /tmp/body2.md
+          fi
+
+      - name: Post actions panel
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ./scripts/idd-panel.sh post "${{ github.repository }}" "${{ github.event.pull_request.number }}"

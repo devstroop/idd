@@ -45,3 +45,10 @@ jobs:
           jq -r .body .idd/result.json > /tmp/body.md
           gh issue edit "$IDD_NUMBER" --title "$TITLE" --body-file /tmp/body.md
           gh issue edit "$IDD_NUMBER" --add-label idd-formatted || true
+
+      - name: Post actions panel
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ./scripts/idd-panel.sh post "${{ github.repository }}" "${{ github.event.issue.number }}"

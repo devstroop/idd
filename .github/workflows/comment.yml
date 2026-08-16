@@ -2,7 +2,7 @@ name: IDD comment
 
 on:
   issue_comment:
-    types: [created]
+    types: [created, edited]
 
 permissions:
   issues: write
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   respond:
-    if: github.event.comment.user.type != 'Bot'
+    if: github.event.sender.type != 'Bot'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -37,41 +37,71 @@ jobs:
             -H "Accept: application/vnd.github.squirrel-girl-preview+json" \
             -f content=eyes || true
 
-      - name: Parse command
+      - name: Parse intent (slash command or panel tick)
         id: cmd
         env:
+          ACTION: ${{ github.event.action }}
           BODY: ${{ github.event.comment.body }}
+          FROM: ${{ github.event.changes.body.from || '' }}
+          TO: ${{ github.event.changes.body.to || '' }}
         run: |
-          CMD="feedback"
-          if [[ "$BODY" =~ ^/[a-z][a-z-]* ]]; then
-            CMD="${BODY%% *}"
+          CMD=""
+          if [ "$ACTION" = "created" ]; then
+            if [[ "$BODY" =~ ^/[a-z][a-z-]* ]]; then
+              CMD="${BODY%% *}"
+            fi
+          else
+            FROMSET="$(printf '%s' "$FROM" | grep '^- \[x\]' | grep -oE '/(plan|review|implement|close)' || true)"
+            for c in $(printf '%s' "$TO" | grep '^- \[x\]' | grep -oE '/(plan|review|implement|close)' || true); do
+              case " $FROMSET " in
+                *" $c "*) ;;
+                *) CMD="$c"; break ;;
+              esac
+            done
+            if [ -z "$CMD" ]; then
+              if [[ "$BODY" =~ ^/(plan|review|implement|close) ]]; then
+                CMD="${BODY%% *}"
+              fi
+            fi
           fi
           echo "command=$CMD" >> "$GITHUB_OUTPUT"
-          echo "Parsed command: $CMD"
+          echo "Parsed command: ${CMD:-<none>}"
 
       - name: Guard /implement
         if: >-
           steps.cmd.outputs.command == 'implement' &&
-          !contains(fromJson('["OWNER","COLLABORATOR","MEMBER"]'), github.event.comment.author_association)
+          !contains(fromJson('["OWNER","COLLABORATOR","MEMBER"]'), github.event.sender.author_association)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh issue comment "${{ github.event.issue.number }}" \
-            --body "**/implement blocked** — only OWNER, COLLABORATOR, or MEMBER can request implementation. Want analysis instead? Reply \`/plan\` or \`/review\`."
+            --body "**/implement blocked** — only OWNER, COLLABORATOR, or MEMBER can request implementation. Tick \`/plan\` or \`/review\` in the 🤖 panel instead."
+
+      - name: Mark running in panel
+        if: steps.cmd.outputs.command != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ steps.cmd.outputs.command }}" != "feedback" ]; then
+            ./scripts/idd-panel.sh check "${{ github.repository }}" \
+              "${{ github.event.issue.number }}" "${{ steps.cmd.outputs.command }}" \
+              "⏳ ${{ steps.cmd.outputs.command }} running…"
+          fi
 
       - name: Run triage agent
         if: >-
+          steps.cmd.outputs.command != '' &&
           !(steps.cmd.outputs.command == 'implement' &&
-            !contains(fromJson('["OWNER","COLLABORATOR","MEMBER"]'), github.event.comment.author_association))
+            !contains(fromJson('["OWNER","COLLABORATOR","MEMBER"]'), github.event.sender.author_association))
         env:
           GH_TOKEN: ${{ github.token }}
           IDD_REPO: ${{ github.repository }}
           IDD_NUMBER: ${{ github.event.issue.number }}
           IDD_KIND: ${{ github.event.issue.pull_request && 'pr' || 'issue' }}
           IDD_COMMENT: ${{ github.event.comment.body }}
-          IDD_AUTHOR: ${{ github.event.comment.user.login }}
+          IDD_AUTHOR: ${{ github.event.sender.login }}
           IDD_COMMAND: ${{ steps.cmd.outputs.command }}
-          IDD_ALLOWED: ${{ contains(fromJson('["OWNER","COLLABORATOR","MEMBER"]'), github.event.comment.author_association) }}
+          IDD_ALLOWED: ${{ contains(fromJson('["OWNER","COLLABORATOR","MEMBER"]'), github.event.sender.author_association) }}
           OPENCODE_MODEL: ${{ vars.OPENCODE_MODEL || '' }}
         run: |
           rm -f /tmp/idd-reply.md /tmp/events.jsonl
@@ -92,6 +122,15 @@ jobs:
             echo "event tail:"; tail -3 /tmp/events.jsonl
           fi
           gh issue comment "$IDD_NUMBER" --repo "$IDD_REPO" --body-file /tmp/idd-reply.md
+
+      - name: Reset panel
+        if: steps.cmd.outputs.command != '' && steps.cmd.outputs.command != 'feedback'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ./scripts/idd-panel.sh reset "${{ github.repository }}" \
+            "${{ github.event.issue.number }}" \
+            "✅ ${{ steps.cmd.outputs.command }} finished"
 
       - name: Done
         if: always()

@@ -22,16 +22,45 @@ the other way around.
    `.idd/result.json`; everything else replies as a comment via `gh`.
 6. **No secret leakage.** Logs may be public. Never echo tokens or keys.
 
-## Command reference (comment workflow)
+## Interactive components (standard set)
+
+Everything in a thread is driven by four standard components. Keep this set;
+do not invent new trigger formats.
+
+| Component | Where | Interaction | Event |
+|-----------|-------|-------------|-------|
+| **🤖 Actions panel** | bot comment (`.config/opencode/panel.md`) | tick a checkbox → command | `issue_comment: [edited]` |
+| **Slash commands** | any comment (`/plan`, `/review`, `/implement`, `/close`) | typed | `issue_comment: [created]` |
+| **Approve & merge checklist** | PR body (`.config/opencode/checklist.md`) | tick box → merge | `pull_request: [edited]` |
+| **Reactions** | 👀 on start, ✅ on finish | ack only — never a trigger | — (no webhook) |
+
+Rules:
+
+1. **Sender, not author.** Dispatch filters on `github.event.sender.type != 'Bot'` — a
+   human ticking a bot's panel comment produces `sender = human`. Bot resets
+   are filtered by the same rule, so no loops.
+2. **Tick detection.** A command dispatches only when a box transitions
+   `[ ] → [x]` between `changes.body.from` and `changes.body.to`.
+3. **Panels reset after every run.** `scripts/idd-panel.sh` owns the panel
+   comment (marker `<!-- IDD-PANEL -->`): `post` on open, `check <cmd>` while
+   running, `reset` when done. The status line reports the last run.
+4. **Formatter never touches checklists.** Checkbox state is machine-read;
+   the formatter preserves `## Approve & merge` and any task list verbatim.
+5. **Guards apply to every path.** `/implement` (typed or ticked) requires
+   OWNER/COLLABORATOR/MEMBER — enforced in the workflow, not by the agent.
+6. **No menus in agent replies.** The panel replaces pasted menus; replies
+   end with `_Tick an action in the 🤖 panel above._`
+
+## Command reference (panel + slash)
 
 | Command | Behavior |
 |---------|----------|
-| `/help` | Print the menu only |
+| `/help` | Explain the panel only |
 | `/plan` | Analyze thread, post a plan with steps + acceptance criteria. No code. |
 | `/review` | Read the diff (PRs) or the thread (issues), post findings. No code. |
 | `/implement` | Only when `IDD_ALLOWED=true` and `IDD_KIND=pr` or a clear issue intent exists. Create branch `idd/<slug>`, implement, run tests if any, push, `gh pr create`. Otherwise explain why not. |
 | `/close` | Summarize intent + outcome, then close the thread. |
-| anything else | Treat as feedback: answer, then show the menu. |
+| anything else | Treat as feedback: answer, then reference the panel. |
 
 ## Format contract (`formatter` agent — `.config/opencode/agent/formatter.md`)
 

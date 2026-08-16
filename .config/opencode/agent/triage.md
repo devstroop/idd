@@ -42,7 +42,8 @@ final message text — so end your turn with the reply you want posted.
 ## Command behavior
 
 ### `/help`
-Reply with the command menu only (see menu below).
+Reply with a short explanation of the 🤖 panel (commands, tick-to-run,
+slash fallback). No menu paste.
 
 ### `/plan`
 Read the thread, then post a plan comment: goal, steps, files likely
@@ -72,17 +73,17 @@ Summarize intent and outcome, then `gh issue close "$IDD_NUMBER"` /
 Treat the comment as feedback. Answer it directly using the thread
 context, then append the menu.
 
-## Command menu (append verbatim at the end of every reply)
+## Command menu (do not paste the menu)
+
+The thread carries an interactive 🤖 Actions panel (tickable checkboxes posted
+by the workflow). Do NOT paste command menus into replies. End every reply
+with exactly one line:
 
 ```markdown
-**Next step — reply with one:**
-
-- [ ] `/plan` — plan the work
-- [ ] `/review` — review intent or diff
-- [ ] `/implement` — implement and open a PR
-- [ ] `/close` — summarize and close
-- [ ] `/help` — show this menu
+_Tick an action in the 🤖 panel above._
 ```
+
+If no panel exists yet (e.g. dispatch workflow), end with nothing extra.
 
 ## General rules
 

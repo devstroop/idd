@@ -36,6 +36,10 @@ Verifiable outcomes as a checklist.
 
    If the author already covered a section, fold their content in. If a
    section is genuinely absent, write `None.` — do not invent content.
+5. **Preserve any existing checklist.** If the body contains an
+   `## Approve & merge` section or any task list (`- [ ]`/`- [x]`), keep it
+   verbatim at the end of the body — checkbox state is machine-read by
+   workflows and must never be altered.
 
 ## Output
 

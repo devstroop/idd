@@ -49,11 +49,9 @@ body:
     validations:
       required: false
 
-  - type: checkboxes
+  - type: markdown
     id: next
     attributes:
-      label: Next step
-      description: Reply with the matching command after filing.
-      options:
-        - label: "I want a plan first — reply `/plan`"
-        - label: "I want it implemented — reply `/implement`"
+      value: |
+        **Next step:** tick an action in the bot's 🤖 Actions panel —
+        `/plan`, `/review`, `/implement` (OWNER/COLLABORATOR/MEMBER), `/close`.
