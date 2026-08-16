@@ -49,7 +49,8 @@ its command is all that's needed. Every run is acknowledged instantly with a
 
 ## Swap opencode → Devstroop Agent SDK
 
-All agent behavior lives in `.opencode/agents/` and `AGENTS.md`. The
+All agent behavior lives in `.config/opencode/` — metadata in
+`config.json`, prompts as plain markdown in `agent/<name>.md`. The
 workflows only invoke `opencode run --agent <name>` with an env-context
 contract (`IDD_*`). Replacing the worker later means changing a single
 `run` step per workflow to call the SDK with the same contract — the
@@ -58,9 +59,9 @@ triggers, guards, and formats stay.
 ## Repository layout
 
 ```
-.github/workflows/       trigger wiring
+.github/workflows/       trigger wiring (thin — no prompts inline)
 .github/ISSUE_TEMPLATE/  intent form (buttons, no free text required)
-.opencode/agents/        formatter, triage — the workforce
+.config/opencode/        agent metadata + prompts (the workforce)
 AGENTS.md                behavior contract for agents
 note.txt                 what IDD means here
 ```

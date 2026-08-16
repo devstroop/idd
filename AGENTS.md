@@ -33,7 +33,7 @@ the other way around.
 | `/close` | Summarize intent + outcome, then close the thread. |
 | anything else | Treat as feedback: answer, then show the menu. |
 
-## Format contract (`formatter` agent)
+## Format contract (`formatter` agent — `.config/opencode/agent/formatter.md`)
 
 - Title: imperative, ≤ 72 chars, no type prefixes (`[feat]`, `IDD-`).
 - Body normalized to:
@@ -55,7 +55,9 @@ Verifiable outcomes, as a checklist.
 
 ## SDK swap note
 
-Workflows call agents through `opencode run --agent <name>` only. When the
-Devstroop Agent SDK takes over, the same agent names and `IDD_*` contract
-move behind `devstroop.sdk().agent("triage").run(...)` — no trigger or
-format changes.
+Workflows call agents through `opencode run --agent <name>` only. Agent
+metadata (model, temperature, permissions) is in
+`.config/opencode/config.json`; each agent's prompt lives in
+`.config/opencode/agent/<name>.md`. When the Devstroop Agent SDK takes over,
+the same agent names and `IDD_*` contract move behind
+`devstroop.sdk().agent("triage").run(...)` — no trigger or format changes.

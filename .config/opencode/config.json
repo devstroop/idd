@@ -1,0 +1,30 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "opencode/big-pickle",
+  "agent": {
+    "formatter": {
+      "description": "Reformats issue/PR title and body into the IDD intent format. Formatting only — never implements.",
+      "temperature": 0.1,
+      "permission": {
+        "edit": "allow",
+        "bash": { "*": "deny", "jq*": "allow", "mkdir*": "allow" },
+        "webfetch": "deny",
+        "websearch": "deny",
+        "task": "deny"
+      },
+      "prompt": "{file:./agent/formatter.md}"
+    },
+    "triage": {
+      "description": "Interactive triage agent for issue/PR comments — feedback, plans, reviews, guarded implementation via slash commands.",
+      "temperature": 0.2,
+      "permission": {
+        "edit": "allow",
+        "bash": "allow",
+        "webfetch": "deny",
+        "websearch": "deny",
+        "task": "deny"
+      },
+      "prompt": "{file:./agent/triage.md}"
+    }
+  }
+}
