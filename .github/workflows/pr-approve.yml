@@ -18,7 +18,8 @@ jobs:
   merge:
     if: >-
       github.event.sender.type != 'Bot' &&
-      contains(fromJson('["OWNER","COLLABORATOR","MEMBER"]'), github.event.sender.author_association)
+      contains(fromJson('["OWNER","COLLABORATOR","MEMBER"]'),
+        github.event.pull_request.user.author_association || github.event.comment.user.author_association)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
