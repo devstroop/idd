@@ -22,6 +22,7 @@ jobs:
       - uses: devstroop/setup-opencode@main
         with:
           version: latest
+          config: .config/opencode/config.json
 
       - name: Reformat title and body
         env:
