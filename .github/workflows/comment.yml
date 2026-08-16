@@ -58,10 +58,19 @@ jobs:
           IDD_AUTHOR: ${{ github.event.comment.user.login }}
           IDD_COMMAND: ${{ steps.cmd.outputs.command }}
           IDD_ALLOWED: ${{ contains(fromJson('["OWNER","COLLABORATOR","MEMBER"]'), github.event.comment.author_association) }}
-          OPENCODE_MODEL: ${{ vars.OPENCODE_MODEL || 'opencode/deepseek-v4-flash-free' }}
+          OPENCODE_MODEL: ${{ vars.OPENCODE_MODEL || '' }}
         run: |
-          opencode run -m "$OPENCODE_MODEL" --agent triage \
-            "Handle '$IDD_COMMAND' on $IDD_KIND #$IDD_NUMBER" > /tmp/reply.md || true
+          : > /tmp/reply.md
+          for model in ${OPENCODE_MODEL:-opencode/big-pickle opencode/deepseek-v4-flash-free opencode/mimo-v2.5-free}; do
+            [ -z "$model" ] && continue
+            echo "trying model: $model"
+            if timeout 300 opencode run -m "$model" --agent triage \
+              "Handle '$IDD_COMMAND' on $IDD_KIND #$IDD_NUMBER" > /tmp/reply.md 2>&1 \
+              && [ -s /tmp/reply.md ]; then
+              echo "used model: $model"
+              break
+            fi
+          done
           if [ ! -s /tmp/reply.md ]; then
             echo "No reply generated." > /tmp/reply.md
           fi

@@ -53,14 +53,30 @@ jobs:
           IDD_KIND: ${{ github.event.inputs.kind }}
           IDD_IMPLEMENT: ${{ github.event.inputs.implement }}
           IDD_BRANCH: idd/${{ github.ref_name }}
-          OPENCODE_MODEL: ${{ vars.OPENCODE_MODEL || 'opencode/deepseek-v4-flash-free' }}
+          OPENCODE_MODEL: ${{ vars.OPENCODE_MODEL || '' }}
         run: |
           if [ "$IDD_IMPLEMENT" = "true" ]; then
-            opencode run -m "$OPENCODE_MODEL" \
-              "Implement this intent ($IDD_KIND): $IDD_INTENT" || exit 1
+            for model in ${OPENCODE_MODEL:-opencode/big-pickle opencode/deepseek-v4-flash-free opencode/mimo-v2.5-free}; do
+              [ -z "$model" ] && continue
+              echo "trying model: $model"
+              if timeout 600 opencode run -m "$model" \
+                "Implement this intent ($IDD_KIND): $IDD_INTENT"; then
+                echo "used model: $model"
+                break
+              fi
+            done
           else
-            opencode run -m "$OPENCODE_MODEL" --agent triage \
-              "Plan only ($IDD_KIND): $IDD_INTENT" > /tmp/plan.md || true
+            for model in ${OPENCODE_MODEL:-opencode/big-pickle opencode/deepseek-v4-flash-free opencode/mimo-v2.5-free}; do
+              [ -z "$model" ] && continue
+              echo "trying model: $model"
+              if timeout 300 opencode run -m "$model" --agent triage \
+                "Plan only ($IDD_KIND): $IDD_INTENT" > /tmp/plan.md 2>&1 \
+                && [ -s /tmp/plan.md ]; then
+                echo "used model: $model"
+                break
+              fi
+            done
+            [ -s /tmp/plan.md ] || echo "No plan generated." > /tmp/plan.md
             gh issue create --title "Plan: $(echo "$IDD_INTENT" | head -c 60)" \
               --body-file /tmp/plan.md
           fi
