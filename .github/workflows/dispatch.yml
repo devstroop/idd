@@ -67,7 +67,7 @@ jobs:
             timeout 300 opencode run --format json $MODEL_ARGS --agent triage \
               "Plan only ($IDD_KIND): $IDD_INTENT" > /tmp/events.jsonl 2>&1
             if [ ! -s /tmp/idd-reply.md ]; then
-              jq -r 'select(.type=="message.part.updated") | .properties.part | select(.type=="text") | .text' \
+              jq -r 'select(.type=="text") | .part.text' \
                 /tmp/events.jsonl 2>/dev/null \
                 | tac | awk '/^[[:space:]]*$/{if (n) exit; next} {n=1; print}' | tac > /tmp/idd-reply.md
             fi
