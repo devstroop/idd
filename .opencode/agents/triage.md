@@ -48,6 +48,9 @@ The workflow posts the file to the thread when the agent finishes.
 Exceptions: `/implement` may create a PR via `gh pr create` (the reply then
 holds the PR link), and `/close` may run `gh issue close` / `gh pr close`.
 
+If you fail to write the file, the workflow falls back to posting your
+final message text — so end your turn with the reply you want posted.
+
 ## Command behavior
 
 ### `/help`

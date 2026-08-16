@@ -60,17 +60,22 @@ jobs:
           IDD_ALLOWED: ${{ contains(fromJson('["OWNER","COLLABORATOR","MEMBER"]'), github.event.comment.author_association) }}
           OPENCODE_MODEL: ${{ vars.OPENCODE_MODEL || '' }}
         run: |
-          rm -f /tmp/idd-reply.md
+          rm -f /tmp/idd-reply.md /tmp/events.jsonl
           for model in ${OPENCODE_MODEL:-opencode/big-pickle opencode/deepseek-v4-flash-free opencode/mimo-v2.5-free}; do
             [ -z "$model" ] && continue
             echo "trying model: $model"
-            if timeout 300 opencode run -m "$model" --agent triage \
-              "Handle '$IDD_COMMAND' on $IDD_KIND #$IDD_NUMBER" > /dev/null 2>&1 \
+            if timeout 300 opencode run --format json -m "$model" --agent triage \
+              "Handle '$IDD_COMMAND' on $IDD_KIND #$IDD_NUMBER" > /tmp/events.jsonl 2>&1 \
               && [ -s /tmp/idd-reply.md ]; then
               echo "used model: $model"
               break
             fi
           done
+          if [ ! -s /tmp/idd-reply.md ]; then
+            jq -r 'select(.type=="message.part.updated") | .properties.part | select(.type=="text") | .text' \
+              /tmp/events.jsonl 2>/dev/null \
+              | tac | awk '/^[[:space:]]*$/{if (n) exit; next} {n=1; print}' | tac > /tmp/idd-reply.md
+          fi
           if [ ! -s /tmp/idd-reply.md ]; then
             echo "No reply generated." > /tmp/idd-reply.md
           fi
